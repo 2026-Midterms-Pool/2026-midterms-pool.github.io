@@ -80,7 +80,7 @@ function chamber(c, i) {
   const before = c.now.startsWith("Tied") ? c.now : c.now.replace(/^([DR]) (\d+)–(\d+)$/, (_, p, a, b) => p === "D" ? `Democrats ${a}, Republicans ${b}` : `Republicans ${a}, Democrats ${b}`);
   return `<div class="race hl chamber ${won ? "is-called" : "is-count"}">
     <div class="kick">${esc(c.name)}</div><div class="head sm">${head}</div>
-    <div class="sub">First party to ${c.majority} seats wins control · ${c.uncalled} seats not decided yet</div>
+    <div class="sub">First party to ${c.majority} seats wins control · ${c.uncalled} seats not decided yet${c.holdover ? `<br>${esc(c.holdover)}` : ""}</div>
     <div class="lanes">${lane("D", c.d_won)}${lane("R", c.r_won)}<span class="goal" title="${c.majority} seats for control">${c.majority}</span></div>
     <div class="fine">Before tonight: ${esc(before)}${c.total % 2 === 0 ? ` · ${c.total / 2}–${c.total / 2} tie: no point` : ""}</div>
     ${poolrow}<div class="meta">${you}<a class="follow" href="${c.follow}" target="_blank" rel="noopener">Full results ↗</a></div></div>`;
