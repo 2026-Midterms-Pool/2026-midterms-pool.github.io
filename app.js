@@ -50,7 +50,7 @@ function race(r, opts = {}) {
     : waiting ? esc(where) : `<span class="${pcls(r.leader)}">${esc(last(r.leader))}</span> ahead in ${esc(where)}`;
   const detail = waiting ? esc(r.note || "Polls still open")
     : r.cands.map(c => `<span class="${c.name === r.winner ? "w" : ""}">${esc(clean(c.name))} ${c.share}%</span>`).join(" · ");
-  const upset = r.upset_pick ? `<div class="odds">Underdog: <b>${esc(clean(r.upset_pick))}</b> — 3 pts if you picked them and they win · Favorite: ${esc(clean(r.favorite))} — 1 pt</div>` : "";
+  const upset = "";
   return `<div class="race hl ${called ? "is-called" : waiting ? "is-wait" : "is-count"}">
     ${kick ? `<div class="kick">${kick}</div>` : ""}<div class="head">${head}</div><div class="sub">${detail}</div>${upset}
     ${bar(r)}<div class="poolrow"><span class="pool">Pool: ${r.cands.map(c => `<b>${c.picks}</b> picked ${esc(last(c.name))}`).join(" · ")}</span></div>
@@ -94,8 +94,7 @@ function closeness(i, mine, n) {
   if (Number.isNaN(v)) return ["pend", ""];
   if (n.status === "final" || !left) { const d = x => Math.abs(parseFloat(x) - now); const better = RK.filter(e => d(e.extra.numbers[i]) < d(v)).length;
     return [better === 0 ? "ok" : "pend", better === 0 ? "✓ Closest guess" : `${ord(better + 1)} closest`]; }
-  const ok = n.kind === "net" ? Math.abs(v - now) <= left : v >= now && v <= now + left;
-  return ok ? ["up", "▲ Still possible"] : ["dn", "▼ Out of reach"]; }
+  return ["pend", ""]; }  // only distance from the final number counts, so no status until it's final
 function number(n, i) {
   const m = me(), mine = m ? m.extra.numbers[i] : null, lo = n.lo, hi = n.hi, pct = v => Math.max(0, Math.min(100, (parseFloat(v) - lo) / (hi - lo) * 100)), pos = v => `${pct(v)}%`, edge = v => pct(v) < 12 ? " e-l" : pct(v) > 88 ? " e-r" : "";
   return `<div class="race num">
@@ -126,9 +125,9 @@ function prop(p, i) {
 
 const SECTIONS = [
   { id: "senate", tab: "Senate", ...pick(P.sections[0]), html: () => grouped(P.sections[0].races, r => race(r)) },
-  { id: "upset", tab: "Upset Watch", ...pick(P.sections[1]), rule: "Races the favorite should win. Picking the underdog pays 3 pts.", html: () => grouped(P.sections[1].races, r => race(r)) },
+  { id: "upset", tab: "Upset Watch", ...pick(P.sections[1]), rule: "Races the favorite should win. The underdog pays 3 pts if they win; the favorite pays 1.", html: () => grouped(P.sections[1].races, r => race(r)) },
   { id: "governor", tab: "Governors", ...pick(P.sections[2]), html: () => grouped(P.sections[2].races, r => race(r)) },
-  { id: "numbers", tab: "Numbers", menu: P.numbers.menu, title: "The big numbers", rule: "Closest guess wins 3 pts · not final until every race is decided", html: () => P.numbers.items.map(number).join("") },
+  { id: "numbers", tab: "Numbers", menu: P.numbers.menu, title: "The big numbers", rule: "Closest guess wins 3 pts (ties split) · scored once every race is decided", html: () => P.numbers.items.map(number).join("") },
   { id: "legislatures", tab: "Statehouses", menu: P.legislatures.menu, title: "Statehouses", rule: "Which party wins control of each state House and Senate · 1 pt each", html: () => P.legislatures.chambers.map(chamber).join("") },
   { id: "bonus", tab: "Bonus", menu: P.props.menu, title: "Bonus round", rule: P.props.rule, html: () => P.props.items.map(prop).join("") },
   { id: "corner", tab: "Schools", menu: P.corner.menu, title: "School superintendents", rule: "The top schools official in each state · 1 pt each",
