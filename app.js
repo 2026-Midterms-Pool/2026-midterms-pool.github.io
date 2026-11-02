@@ -143,6 +143,10 @@ function podium() {
 }
 function standings() {
   const show = podiumReady(), rest = show ? RK.filter(e => e.rank > 3) : RK;
+  if (RK.every(e => !e.points)) return `${youBar()}<div class="pre">No races decided yet. Standings start with the first AP call after polls close at 6 PM ET.</div>
+    <ol class="board">${[...RK].sort((a, b) => a.name.localeCompare(b.name)).map(e => `<li data-who="${esc(e.name)}" class="${e.name === (me() || {}).name ? "is-me" : ""}">
+      <span class="rk">–</span><span class="who">${esc(e.name)}</span><span class="pts">0<small> pts</small></span><span class="go">›</span></li>`).join("")}</ol>
+    <button class="sbs-link" data-grid="1">See everyone's picks side by side <span>›</span></button>`;
   return `${youBar()}${show ? podium() : ""}
     <ol class="board">${rest.map(e => `<li data-who="${esc(e.name)}" class="${e.name === (me() || {}).name ? "is-me" : ""} ${e.rank === 1 ? "is-top" : ""}">
       <span class="rk">${e.rank}${tied(e) ? "<small>tied</small>" : ""}</span><span class="who">${esc(e.name)}${e.name === (me() || {}).name ? ` <em>you</em>` : ""}</span>
