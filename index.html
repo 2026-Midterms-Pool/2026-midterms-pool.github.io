@@ -139,8 +139,8 @@ footer{padding:18px 16px 30px;text-align:center;font-size:12px;color:var(--muted
 .bar .half{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55;transform:translateX(-1px)}
 
 /* race headlines: decided races dominate */
-.grp-l{font:600 11px Lora;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 0;padding-bottom:4px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between}
-.grp-l span{color:var(--gold)}
+.grp-l{font:700 12px Lora;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);background:var(--cream);margin:24px -16px 0;padding:9px 16px;border-top:2px solid var(--red);display:flex;justify-content:space-between;align-items:center}
+.grp-l span{background:var(--red);color:#fff;font-size:11px;letter-spacing:0;padding:1px 8px;border-radius:999px}
 .hl .kick{font:600 10.5px Lora;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .hl.is-called .kick{color:var(--red)}
 .hl .head{font:400 20px/1.2 'Playfair Display';margin:3px 0 3px;color:var(--ink)}
@@ -239,6 +239,8 @@ footer{padding:18px 16px 30px;text-align:center;font-size:12px;color:var(--muted
 .sbs-link{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:48px;margin:18px 0 4px;padding:10px 12px;background:#fff;border:1px solid var(--rule);font:600 15px 'Playfair Display';color:var(--red);text-align:left}
 .sbs-link span{font-size:20px}
 .pre{font:italic 14px Lora;color:var(--muted);text-align:center;margin:14px 0 4px}
+.poolrow{margin-top:6px}.pool{color:var(--ink);font-size:13.5px}.pool b{font:700 15px Lora;color:var(--ink)}
+.rname{text-align:center;font:italic 600 24px/1.2 'Playfair Display';color:var(--ink);margin:4px 0 2px}
 footer .note{max-width:460px;margin:0 auto 6px}
 .minor small{display:block;font:italic 12px Lora;color:var(--muted)}
 </style>
@@ -255,7 +257,7 @@ footer .note{max-width:460px;margin:0 auto 6px}
   <section class="tab" id="t-stand"></section>
   <section class="tab" id="t-results" hidden></section>
   <section class="tab" id="t-mine" hidden></section>
-  <footer><div class="note"><b>Decided</b> means the Associated Press has officially declared a winner. Everything else is still being counted and can change.</div><div id="srcs"></div><div style="margin-top:6px">Bragging rights only. No substitutions. Cheesecake not included.</div></footer>
+  <footer><div class="note"><b>Decided</b> means the Associated Press has officially declared a winner. Everything else is still being counted and can change.</div><div style="margin-top:6px">Bragging rights only. No substitutions. Cheesecake not included.</div></footer>
 </div>
 <script>window.POOL_URL = "data.json";
 fetch("data.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(d => {

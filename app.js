@@ -53,7 +53,8 @@ function race(r, opts = {}) {
   const upset = r.upset_pick ? `<div class="odds">Underdog: <b>${esc(clean(r.upset_pick))}</b> — 3 pts if you picked them and they win · Favorite: ${esc(clean(r.favorite))} — 1 pt</div>` : "";
   return `<div class="race hl ${called ? "is-called" : waiting ? "is-wait" : "is-count"}">
     ${kick ? `<div class="kick">${kick}</div>` : ""}<div class="head">${head}</div><div class="sub">${detail}</div>${upset}
-    ${bar(r)}<div class="meta">${youLine(r, myPick(r)) || `<span>Pool: ${r.cands.map(c => `${c.picks} picked ${esc(last(c.name))}`).join(" · ")}</span>`}
+    ${bar(r)}<div class="poolrow"><span class="pool">Pool: ${r.cands.map(c => `<b>${c.picks}</b> picked ${esc(last(c.name))}`).join(" · ")}</span></div>
+    <div class="meta">${youLine(r, myPick(r)) || "<span></span>"}
     <a class="follow" href="${r.follow}" target="_blank" rel="noopener">Full results ↗</a></div></div>`;
 }
 const grouped = (list, fn) => {
@@ -74,20 +75,27 @@ function chamber(c, i) {
     : c.status === "waiting" ? "Not started" : lead ? `<span class="pc-${lead}">${party(lead)}</span> lead ${Math.max(c.d_won, c.r_won)}–${Math.min(c.d_won, c.r_won)}` : "Even so far";
   const m = me(), pick = m ? m.extra.chambers[i] : null;
   const st = won ? (pick === won ? ["ok", "✓ right"] : ["no", "✗ wrong"]) : lead ? (pick === lead ? ["up", "▲ ahead"] : ["dn", "▼ behind"]) : ["pend", "Not started"];
-  const you = pick ? `<span class="you ${st[0]}">You picked ${party(pick)} · ${st[1]}</span>` : `<span>Pool: ${c.picks_d} picked Dems · ${c.picks_r} picked Reps</span>`;
+  const you = (pick ? `<span class="you ${st[0]}">You picked ${party(pick)} · ${st[1]}</span>` : "<span></span>");
+  const poolrow = `<div class="poolrow"><span class="pool">Pool: <b>${c.picks_d}</b> picked Dems · <b>${c.picks_r}</b> picked Reps</span></div>`;
   const before = c.now.startsWith("Tied") ? c.now : c.now.replace(/^([DR]) (\d+)–(\d+)$/, (_, p, a, b) => p === "D" ? `Democrats ${a}, Republicans ${b}` : `Republicans ${a}, Democrats ${b}`);
   return `<div class="race hl chamber ${won ? "is-called" : "is-count"}">
     <div class="kick">${esc(c.name)}</div><div class="head sm">${head}</div>
     <div class="sub">First party to ${c.majority} seats wins control · ${c.uncalled} seats not decided yet</div>
     <div class="lanes">${lane("D", c.d_won)}${lane("R", c.r_won)}<span class="goal" title="${c.majority} seats for control">${c.majority}</span></div>
     <div class="fine">Before tonight: ${esc(before)}${c.total % 2 === 0 ? ` · ${c.total / 2}–${c.total / 2} tie: no point` : ""}</div>
-    <div class="meta">${you}<a class="follow" href="${c.follow}" target="_blank" rel="noopener">Full results ↗</a></div></div>`;
+    ${poolrow}<div class="meta">${you}<a class="follow" href="${c.follow}" target="_blank" rel="noopener">Full results ↗</a></div></div>`;
 }
 
 // ---- numbers: current value on the pool's guess range ----
 const NUM_PLAIN = ["How many House seats Democrats gain (+) or lose (−)", "How many Senate seats Democrats will have", "How many governors will be Democrats (they had 24 before tonight)"];
 const plainBasis = b => b.replace(/\s*\(baseline \d+\)/, "").replace(/called/g, "decided");
-function closeness(i, mine, now) { const d = v => Math.abs(parseFloat(v) - now); const better = RK.filter(e => d(e.extra.numbers[i]) < d(mine)).length; return better === 0 ? "You're closest right now" : `${ord(better + 1)} closest right now`; }
+function closeness(i, mine, n) {
+  const v = parseFloat(mine), now = n.now_n, left = n.remaining ?? 0;
+  if (Number.isNaN(v)) return ["pend", ""];
+  if (n.status === "final" || !left) { const d = x => Math.abs(parseFloat(x) - now); const better = RK.filter(e => d(e.extra.numbers[i]) < d(v)).length;
+    return [better === 0 ? "ok" : "pend", better === 0 ? "✓ Closest guess" : `${ord(better + 1)} closest`]; }
+  const ok = n.kind === "net" ? Math.abs(v - now) <= left : v >= now && v <= now + left;
+  return ok ? ["up", "▲ Still possible"] : ["dn", "▼ Out of reach"]; }
 function number(n, i) {
   const m = me(), mine = m ? m.extra.numbers[i] : null, lo = n.lo, hi = n.hi, pct = v => Math.max(0, Math.min(100, (parseFloat(v) - lo) / (hi - lo) * 100)), pos = v => `${pct(v)}%`, edge = v => pct(v) < 12 ? " e-l" : pct(v) > 88 ? " e-r" : "";
   return `<div class="race num">
@@ -96,7 +104,8 @@ function number(n, i) {
     <div class="val">${esc(n.now)}<em>so far</em></div>
     <div class="strip"><span class="rng"></span><span class="mk now${edge(n.now_n)}" style="left:${pos(n.now_n)}"><i>Now ${esc(n.now)}</i></span>${mine ? `<span class="mk mine${edge(mine)}" style="left:${pos(mine)}"><i>You ${esc(mine)}</i></span>` : ""}
       <span class="end l">${lo > 0 && i === 0 ? "+" : ""}${lo}</span><span class="end r">${i === 0 ? "+" : ""}${hi}</span></div>
-    <div class="meta">${mine ? `<span class="you pend">You guessed ${esc(mine)} · ${closeness(i, mine, n.now_n)}</span>` : ""}<span>Pool's guesses ran ${esc(n.picks_range)}</span></div></div>`;
+    <div class="poolrow"><span class="pool">Pool guessed <b>${esc(n.picks_range)}</b></span></div>
+    ${mine ? (c => `<div class="meta"><span class="you ${c[0]}">You guessed ${esc(mine)}${c[1] ? " · " + c[1] : ""}</span></div>`)(closeness(i, mine, n)) : ""}</div>`;
 }
 
 // ---- bonus ----
@@ -112,7 +121,7 @@ function prop(p, i) {
   return `<div class="race hl ${done ? "is-called" : "is-count"}"><div class="kick">${done ? "✓ Decided" : "Not decided yet"}</div>
     <div class="head sm">${esc(PROP_PLAIN[i][0])}</div><div class="fine">${esc(PROP_PLAIN[i][1])}</div>
     <div class="sub now">${esc(p.now.replace("provisional all week", "not final for a few days").replace("— needs 50% + 1 to avoid it", "· needs over 50% to avoid a runoff").replace(/called/g, "decided").replace("Not yet decided", "Not decided yet").replace(" pts —", " percentage points —"))}</div>
-    <div class="meta">${mine ? `<span class="you ${done ? (hit ? "ok" : "no") : "pend"}">You picked ${esc(mine)}${done ? (hit ? " · ✓ You got it" : " · ✗ Not this time") : lean}</span>` : ""}<span>Pool: ${esc(p.picks.replace("Most picked: ", "top pick "))}</span></div></div>`;
+    <div class="meta">${mine ? `<span class="you ${done ? (hit ? "ok" : "no") : "pend"}">You picked ${esc(mine)}${done ? (hit ? " · ✓ You got it" : " · ✗ Not this time") : lean}</span>` : ""}<span class="pool">Pool: ${esc(p.picks.replace("Most picked: ", "top pick ")).replace(/(\d+)/g, "<b>$1</b>")}</span></div></div>`;
 }
 
 const SECTIONS = [
@@ -166,12 +175,12 @@ function receipt(name) {
     const head = r.sec !== cur ? `<div class="cat">${esc(r.sec)}</div>` : ""; cur = r.sec;
     return `${head}<div class="rl ${cls}"><span class="st">${esc(SHORT[r.state] || r.state)}</span><span class="pk">${esc(last(pk))}</span><span class="res">${res}</span><span class="pt">${pts}</span></div>`; }).join("");
   const won = ALL.filter((r, i) => r.winner && e.picks[i] === r.winner).length, lost = ALL.filter((r, i) => r.winner && e.picks[i] !== r.winner).length;
-  return `<div class="receipt"><div class="rh">the 2026 Midterms Pool</div><div class="rc">${me() && me().name === name ? "Your check" : "Guest check"} · ${esc(name)}</div>
+  return `<div class="receipt"><div class="rh">the 2026 Midterms Pool</div><div class="rc">${me() && me().name === name ? "Your check" : "Guest check"}</div><div class="rname">${esc(name)}</div>
     <div class="standing">${rankText(e)} place · <b>${e.points} points</b></div>
     <div class="rc">${won} right · ${lost} wrong · the rest still being decided</div>
     <div class="cols"><span>Race</span><span>Your pick</span><span>Result</span><span>Pts</span></div><div class="legend">✓ you got it · ✗ wrong, winner shown · ▲ ahead · ▼ behind · ·3 = underdog pick worth 3</div>${rows}
     <div class="cat">Big numbers, statehouses &amp; bonus</div><div class="rl pend"><span class="st" style="grid-column:1/4">Scored once final</span><span class="pt"></span></div>
-    <div class="tot"><span>Total so far</span><span>${e.points}</span></div><div class="rc thanks">Thank you for dining with us. No substitutions.</div></div>`;
+    <div class="tot"><span>Total so far</span><span>${e.points}</span></div><div class="rc thanks">Thank you for dining with us.</div></div>`;
 }
 
 // ---- everyone's picks, side by side ----
@@ -209,6 +218,7 @@ function mount() {
   document.getElementById("t-mine").innerHTML = `<label class="pickme">Whose check? <select id="who">${[...RK].sort((a, b) => a.name.localeCompare(b.name)).map(e => `<option>${esc(e.name)}</option>`).join("")}</select></label><div id="rcpt"></div>
     <details class="everyone" id="everyone"><summary>See everyone's picks side by side</summary><div id="gridslot"></div></details>`;
   const who = document.getElementById("who");
+  who.value = (me() || RK[0]).name;
   who.onchange = () => { document.getElementById("rcpt").innerHTML = receipt(who.value); };
   document.getElementById("everyone").addEventListener("toggle", e => { if (e.target.open) document.getElementById("gridslot").innerHTML = grid(); });
   document.addEventListener("click", e => {
@@ -231,7 +241,6 @@ function mount() {
   let n = 60; const f = document.getElementById("fresh");
   const tick = () => { f.textContent = `Updated ${P.updated_et} · refreshes in ${n}s`; if (n-- <= 0) { n = 60; refresh(); } };
   tick(); setInterval(tick, 1000);
-  document.getElementById("srcs").innerHTML = P.sources.map(s => `<span><i class="${s.status === "up" ? "ok" : "wait"}"></i>${esc(s.name.replace("AP results (via NYT feed)", "Associated Press results"))}</span>`).join("");
 }
 function tab(id, scroll = true) {
   document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === id));
