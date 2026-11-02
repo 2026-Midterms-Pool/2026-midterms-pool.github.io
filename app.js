@@ -65,14 +65,14 @@ const grouped = (list, fn) => {
 
 // ---- chambers: a race to the majority line ----
 function chamber(c, i) {
-  const won = c.d_won >= c.majority ? "D" : c.r_won >= c.majority ? "R" : null;
+  const won = c.majority > 0 && c.d_won >= c.majority ? "D" : c.majority > 0 && c.r_won >= c.majority ? "R" : null;
   const party = p => p === "D" ? "Democrats" : "Republicans";
   const lead = c.d_won > c.r_won ? "D" : c.r_won > c.d_won ? "R" : null;
   const lane = (p, n) => `<div class="lane"><span class="ln-l pc-${p}">${p === "D" ? "Dem" : "Rep"}</span>
       <div class="track"><div class="fill f-${p}" style="width:${Math.min(n / c.majority * 100, 100)}%"></div></div>
       <span class="ln-n"><b>${n}</b> <small>${won === p ? "✓ majority" : `${Math.max(c.majority - n, 0)} to go`}</small></span></div>`;
   const head = won ? `<span class="pc-${won}">${party(won)}</span> win control`
-    : c.status === "waiting" ? "Not started" : lead ? `<span class="pc-${lead}">${party(lead)}</span> lead ${Math.max(c.d_won, c.r_won)}–${Math.min(c.d_won, c.r_won)}` : "Even so far";
+    : c.status === "waiting" ? esc(c.note || "Not started") : lead ? `<span class="pc-${lead}">${party(lead)}</span> lead ${Math.max(c.d_won, c.r_won)}–${Math.min(c.d_won, c.r_won)}` : "Even so far";
   const m = me(), pick = m ? m.extra.chambers[i] : null;
   const st = won ? (pick === won ? ["ok", "✓ right"] : ["no", "✗ wrong"]) : lead ? (pick === lead ? ["up", "▲ ahead"] : ["dn", "▼ behind"]) : ["pend", "Not started"];
   const you = (pick ? `<span class="you ${st[0]}">You picked ${party(pick)} · ${st[1]}</span>` : "<span></span>");
