@@ -170,7 +170,7 @@ const SECTIONS = [
   { id: "senate", tab: "Senate", ...pick(P.sections[0]), html: () => grouped(P.sections[0].races, r => race(r)) },
   { id: "upset", tab: "Upset Watch", ...pick(P.sections[1]), rule: "Races the favorite should win. The underdog pays 3 pts if they win; the favorite pays 1.", html: () => grouped(P.sections[1].races, r => race(r)) },
   { id: "governor", tab: "Governors", ...pick(P.sections[2]), html: () => grouped(P.sections[2].races, r => race(r)) },
-  { id: "numbers", tab: "Numbers", menu: P.numbers.menu, title: "The big numbers", rule: "Closest guess wins 3 pts (ties split) · scored once every race is decided", html: () => P.numbers.items.map(number).join("") },
+  { id: "numbers", tab: "Numbers", menu: P.numbers.menu, title: "The big numbers", rule: "Closest guess wins 3 pts · a tie for closest gets 3 pts each · scored once every race is decided", html: () => P.numbers.items.map(number).join("") },
   { id: "legislatures", tab: "Statehouses", menu: P.legislatures.menu, title: "Statehouses", rule: "Which party wins control of each state House and Senate · 1 pt each", html: () => P.legislatures.chambers.map(chamber).join("") },
   { id: "bonus", tab: "Bonus", menu: P.props.menu, title: "Bonus round", rule: P.props.rule, html: () => P.props.items.map(prop).join("") },
   { id: "corner", tab: "Schools", menu: P.corner.menu, title: "School superintendents", rule: "The top schools official in each state · 1 pt each",
