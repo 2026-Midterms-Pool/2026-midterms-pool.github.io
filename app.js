@@ -15,10 +15,13 @@ const ABBR = { "North Carolina": "NC", Maine: "ME", Georgia: "GA", Michigan: "MI
 const ord = n => n + (["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10 < 4 ? n % 10 : 0] || "th");
 
 // ---- who is viewing (remembered on this phone; ?me=Name also works) ----
-const withRanks = lb => { let r = 0, prev = null; return lb.map((e, i) => { if (e.points !== prev) { r = i + 1; prev = e.points; } return { ...e, rank: r }; }); };
+// The Crowd (the pool's most common picks) is scored but never ranked, so it can't take a place.
+const withRanks = lb => { let r = 0, n = 0, prev = null; return lb.map(e => { if (e.crowd) return { ...e, rank: null }; n++; if (e.points !== prev) { r = n; prev = e.points; } return { ...e, rank: r }; }); };
 let RK = withRanks(P.leaderboard);
-const tied = e => RK.filter(x => x.rank === e.rank).length > 1;
-const rankText = e => `${tied(e) ? "Tied for " : ""}${ord(e.rank)}`;
+const tied = e => !e.crowd && RK.filter(x => x.rank === e.rank).length > 1;
+const rankText = e => e.crowd ? "Not ranked" : `${tied(e) ? "Tied for " : ""}${ord(e.rank)}`;
+const CTAG = `<span class="ctag">The pool's most popular picks</span>`;
+const byName = (a, b) => (a.crowd - b.crowd) || a.name.localeCompare(b.name);  // The Crowd sorts last
 // Personal view only from a personal link (?me=Name). Nothing is remembered, so
 // tapping around never changes who "you" are.
 const ME = new URLSearchParams(location.search).get("me");
@@ -92,17 +95,57 @@ const plainBasis = b => b.replace(/\s*\(baseline \d+\)/, "").replace(/called/g, 
 function closeness(i, mine, n) {
   const v = parseFloat(mine), now = n.now_n, left = n.remaining ?? 0;
   if (Number.isNaN(v)) return ["pend", ""];
-  if (n.status === "final" || !left) { const d = x => Math.abs(parseFloat(x) - now); const better = RK.filter(e => d(e.extra.numbers[i]) < d(v)).length;
+  if (n.status === "final" || !left) { const d = x => Math.abs(parseFloat(x) - now); const better = RK.filter(e => !e.crowd && d(e.extra.numbers[i]) < d(v)).length;
     return [better === 0 ? "ok" : "pend", better === 0 ? "✓ Closest guess" : `${ord(better + 1)} closest`]; }
   return ["pend", ""]; }  // only distance from the final number counts, so no status until it's final
+const nfmt = (i, v) => i === 0 ? (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) : String(v);
+const MAJ_LABEL = ["House control", "Senate control"];
+// Below every guess, "closest" just means "guessed lowest", so gold waits until the count reaches the guesses.
+const lowGuess = n => Math.min(...(n.guesses || []).filter(g => !g.c).map(g => g.v));
+const goldOn = n => n.status === "final" || n.now_n >= lowGuess(n);
+// Every guess as a dot on the number line; dots that land together stack up. The current number,
+// and the majority line run through it. Gold = closest to the current number.
+function swarm(n, i) {
+  const W = Math.min(document.documentElement.clientWidth, 720) - 32, D = 10, gs = n.guesses || [];
+  if (!gs.length) return "";
+  const lo = n.lo, hi = n.hi, gLo = Math.min(...gs.map(g => g.v)), a = gLo - 1;
+  const brk = (a - lo) / (hi - lo) > 0.3;  // current number far below every guess: squeeze the empty stretch
+  const f = v => !brk ? (v - lo) / (hi - lo) : v <= a ? 0.08 * (v - lo) / Math.max(a - lo, 1) : 0.15 + 0.85 * (v - a) / (hi - a);
+  const x = v => Math.round(Math.max(0, Math.min(1, f(v))) * W);
+  const real = gs.filter(g => !g.c), target = goldOn(n) ? n.now_n : null;
+  const best = target == null ? null : Math.min(...real.map(g => Math.abs(g.v - target)));
+  const isLead = g => !g.c && best != null && Math.abs(g.v - target) === best, m = me();
+  const rows = [];
+  const placed = [...gs].sort((p, q) => p.v - q.v || (p.c ? 1 : 0) - (q.c ? 1 : 0)).map(g => {
+    const px = x(g.v); let r = 0; while ((rows[r] || []).some(q => Math.abs(q - px) < D + 1)) r++;
+    (rows[r] = rows[r] || []).push(px); return { ...g, px, r }; });
+  const H = rows.length * (D + 2);
+  const cls = g => ["d", m && norm(m.name) === norm(g.n) ? "me" : "", g.c ? "crowd" : "", isLead(g) ? "lead" : ""].join(" ");
+  const dots = placed.map(g => `<span class="${cls(g)}" data-numv="${i}|${g.v}" style="left:${g.px}px;bottom:${g.r * (D + 2)}px"></span>`).join("");
+  const side = px => px < 50 ? "l" : px > W - 50 ? "r" : "";
+  const vl = (k, v, label, extra = "") => v == null ? "" : `<span class="vl ${k}${extra}" style="left:${x(v)}px;top:0;height:${H + 2}px"><i class="${side(x(v))}">${label}</i></span>`;
+  const over = n.majority != null && n.now_n >= n.majority;
+  const lines = vl("maj", n.majority, over ? `✓ ${nfmt(i, n.majority)} = ${MAJ_LABEL[i]}` : `${nfmt(i, n.majority)} = ${MAJ_LABEL[i]}`, over ? " over" : "")
+    + vl("now", n.now_n, `Now ${nfmt(i, n.now_n)}`);
+  const ticks = `${brk ? `<span class="brk" style="left:${Math.round(0.115 * W)}px">⫽</span>` : ""}<span class="tk r" style="left:${W}px">${nfmt(i, hi)}</span>`;
+  return `<div class="swarm" style="padding-bottom:6px"><div class="dw" style="height:${H}px">${dots}</div>${lines}<div class="axis">${ticks}</div></div>`;
+}
+function leadLine(n, i) {
+  const target = n.now_n;
+  if (!goldOn(n)) return `<div class="lead-line">Gold marks the closest guesses once the count reaches the lowest guess (${nfmt(i, lowGuess(n))}).</div>`;
+  const real = (n.guesses || []).filter(g => !g.c), best = Math.min(...real.map(g => Math.abs(g.v - target)));
+  const who = real.filter(g => Math.abs(g.v - target) === best), names = who.slice(0, 4).map(g => esc(g.n)).join(", ") + (who.length > 4 ? ` +${who.length - 4} more` : "");
+  return `<div class="lead-line">${n.status === "final" ? "✓ Closest guess" : `Closest to the count right now (${nfmt(i, target)})`}: <b>${names}</b> · guessed ${nfmt(i, who[0].v)}</div>`;
+}
 function number(n, i) {
-  const m = me(), mine = m ? m.extra.numbers[i] : null, lo = n.lo, hi = n.hi, pct = v => Math.max(0, Math.min(100, (parseFloat(v) - lo) / (hi - lo) * 100)), pos = v => `${pct(v)}%`, edge = v => pct(v) < 12 ? " e-l" : pct(v) > 88 ? " e-r" : "";
+  const m = me(), mine = m ? m.extra.numbers[i] : null;
   return `<div class="race num">
     <div class="kick">${esc(plainBasis(n.basis))}</div>
     <div class="q">${esc(NUM_PLAIN[i])}</div>
     <div class="val">${esc(n.now)}<em>so far</em></div>
-    <div class="strip"><span class="rng"></span><span class="mk now${edge(n.now_n)}" style="left:${pos(n.now_n)}"><i>Now ${esc(n.now)}</i></span>${mine ? `<span class="mk mine${edge(mine)}" style="left:${pos(mine)}"><i>You ${esc(mine)}</i></span>` : ""}
-      <span class="end l">${lo > 0 && i === 0 ? "+" : ""}${lo}</span><span class="end r">${i === 0 ? "+" : ""}${hi}</span></div>
+    ${swarm(n, i)}
+    <div class="dkey"><span><i></i>a guess</span>${m ? `<span><i class="me"></i>you</span>` : ""}<span><i class="lead"></i>closest now</span><span><i class="crowd"></i>The Crowd</span><span>Tap a dot to see who</span></div>
+    ${leadLine(n, i)}<div class="tap-line" id="tap-${i}"></div>
     <div class="poolrow"><span class="pool">Pool guessed <b>${esc(n.picks_range)}</b></span></div>
     ${mine ? (c => `<div class="meta"><span class="you ${c[0]}">You guessed ${esc(mine)}${c[1] ? " · " + c[1] : ""}</span></div>`)(closeness(i, mine, n)) : ""}</div>`;
 }
@@ -150,14 +193,14 @@ function podium() {
   return `<div class="podium">${step(2, "s2")}${step(1, "s1")}${step(3, "s3")}</div>`;
 }
 function standings() {
-  const show = podiumReady(), rest = show ? RK.filter(e => e.rank > 3) : RK;
+  const show = podiumReady(), rest = show ? RK.filter(e => e.crowd || e.rank > 3) : RK;
   if (RK.every(e => !e.points)) return `${youBar()}<div class="pre">No races decided yet. Standings start with the first AP call after polls close at 6 PM ET.</div>
-    <ol class="board">${[...RK].sort((a, b) => a.name.localeCompare(b.name)).map(e => `<li data-who="${esc(e.name)}" class="${e.name === (me() || {}).name ? "is-me" : ""}">
-      <span class="rk">–</span><span class="who">${esc(e.name)}</span><span class="pts">0<small> pts</small></span><span class="go">›</span></li>`).join("")}</ol>
+    <ol class="board">${[...RK].sort(byName).map(e => `<li data-who="${esc(e.name)}" class="${e.name === (me() || {}).name ? "is-me" : ""}${e.crowd ? " is-crowd" : ""}">
+      <span class="rk">–</span><span class="who">${esc(e.name)}${e.crowd ? CTAG : ""}</span><span class="pts">0<small> pts</small></span><span class="go">›</span></li>`).join("")}</ol>
     <button class="sbs-link" data-grid="1">See everyone's picks side by side <span>›</span></button>`;
   return `${youBar()}${show ? podium() : ""}
-    <ol class="board">${rest.map(e => `<li data-who="${esc(e.name)}" class="${e.name === (me() || {}).name ? "is-me" : ""} ${e.rank === 1 ? "is-top" : ""}">
-      <span class="rk">${e.rank}${tied(e) ? "<small>tied</small>" : ""}</span><span class="who">${esc(e.name)}${e.name === (me() || {}).name ? ` <em>you</em>` : ""}</span>
+    <ol class="board">${rest.map(e => `<li data-who="${esc(e.name)}" class="${e.name === (me() || {}).name ? "is-me" : ""} ${e.rank === 1 ? "is-top" : ""}${e.crowd ? " is-crowd" : ""}">
+      <span class="rk">${e.crowd ? "–" : e.rank}${tied(e) ? "<small>tied</small>" : ""}</span><span class="who">${esc(e.name)}${e.name === (me() || {}).name ? ` <em>you</em>` : ""}${e.crowd ? CTAG : ""}</span>
       <span class="pts">${e.points}<small> pts</small></span><span class="go">›</span></li>`).join("")}</ol>
     <button class="sbs-link" data-grid="1">See everyone's picks side by side <span>›</span></button>`;
 }
@@ -174,8 +217,8 @@ function receipt(name) {
     const head = r.sec !== cur ? `<div class="cat">${esc(r.sec)}</div>` : ""; cur = r.sec;
     return `${head}<div class="rl ${cls}"><span class="st">${esc(SHORT[r.state] || r.state)}</span><span class="pk">${esc(last(pk))}</span><span class="res">${res}</span><span class="pt">${pts}</span></div>`; }).join("");
   const won = ALL.filter((r, i) => r.winner && e.picks[i] === r.winner).length, lost = ALL.filter((r, i) => r.winner && e.picks[i] !== r.winner).length;
-  return `<div class="receipt"><div class="rh">the 2026 Midterms Pool</div><div class="rc">${me() && me().name === name ? "Your check" : "Guest check"}</div><div class="rname">${esc(name)}</div>
-    <div class="standing">${rankText(e)} place · <b>${e.points} points</b></div>
+  return `<div class="receipt"><div class="rh">the 2026 Midterms Pool</div><div class="rc">${me() && me().name === name ? "Your check" : e.crowd ? "The pool's most popular pick in every race" : "Guest check"}</div><div class="rname">${esc(name)}</div>
+    <div class="standing">${e.crowd ? "Not ranked" : `${rankText(e)} place`} · <b>${e.points} points</b></div>
     <div class="rc">${won} right · ${lost} wrong · the rest still being decided</div>
     <div class="cols"><span>Race</span><span>Your pick</span><span>Result</span><span>Pts</span></div><div class="legend">✓ you got it · ✗ wrong, winner shown · ▲ ahead · ▼ behind · ·3 = underdog pick worth 3</div>${rows}
     <div class="cat">Big numbers, statehouses &amp; bonus</div><div class="rl pend"><span class="st" style="grid-column:1/4">Scored once final</span><span class="pt"></span></div>
@@ -193,7 +236,7 @@ function grid() {
   return `<div class="ghint">Swipe sideways for more races →</div><div class="gridwrap"><table class="pgrid">
     <thead><tr class="grp"><th class="nm"></th>${groups.map(g => `<th colspan="${g.n}" class="gs">${esc(g.sec)}</th>`).join("")}</tr>
     <tr><th class="nm">Player</th>${ALL.map(colHead).join("")}</tr></thead>
-    <tbody>${RK.map(e => `<tr class="${e.name === (me() || {}).name ? "is-me" : ""}"><th class="nm" data-who="${esc(e.name)}">${esc(e.name)}<small>${rankText(e)} · ${e.points} pts</small></th>${ALL.map((r, i) => cell(r, e.picks[i], i)).join("")}</tr>`).join("")}</tbody>
+    <tbody>${RK.map(e => `<tr class="${e.name === (me() || {}).name ? "is-me" : ""}${e.crowd ? " is-crowd" : ""}"><th class="nm" data-who="${esc(e.name)}">${esc(e.name)}<small>${e.crowd ? "Most popular picks" : rankText(e)} · ${e.points} pts</small></th>${ALL.map((r, i) => cell(r, e.picks[i], i)).join("")}</tr>`).join("")}</tbody>
   </table></div>
   <div class="gkey"><span class="k ok">✓ right</span><span class="k no">✗ wrong</span><span class="k up">▲ ahead</span><span class="k dn">▼ behind</span><span class="k pend">not started</span> Tap a name to open their check.</div>`;
 }
@@ -214,14 +257,17 @@ const trackerHTML = () => tracker() + `<div class="key"><span class="pc-D">■ D
 function mount() {
   document.getElementById("tracker").innerHTML = trackerHTML();
   document.getElementById("subtabs").innerHTML = SECTIONS.map(s => `<button data-sec="${s.id}">${esc(s.tab)}</button>`).join("");
-  document.getElementById("t-mine").innerHTML = `<label class="pickme">Whose check? <select id="who">${[...RK].sort((a, b) => a.name.localeCompare(b.name)).map(e => `<option>${esc(e.name)}</option>`).join("")}</select></label><div id="rcpt"></div>
+  document.getElementById("t-mine").innerHTML = `<label class="pickme">Whose check? <select id="who">${[...RK].sort(byName).map(e => `<option>${esc(e.name)}</option>`).join("")}</select></label><div id="rcpt"></div>
     <details class="everyone" id="everyone"><summary>See everyone's picks side by side</summary><div id="gridslot"></div></details>`;
   const who = document.getElementById("who");
   who.value = (me() || RK[0]).name;
   who.onchange = () => { document.getElementById("rcpt").innerHTML = receipt(who.value); };
   document.getElementById("everyone").addEventListener("toggle", e => { if (e.target.open) document.getElementById("gridslot").innerHTML = grid(); });
   document.addEventListener("click", e => {
-    const t = e.target.closest("[data-tab],[data-sec],[data-jump],[data-who],[data-demo],[data-grid]"); if (!t || t.tagName === "SELECT") return;
+    const t = e.target.closest("[data-tab],[data-sec],[data-jump],[data-who],[data-demo],[data-grid],[data-numv]"); if (!t || t.tagName === "SELECT") return;
+    if (t.dataset.numv) { const [i, v] = t.dataset.numv.split("|").map(Number), n = P.numbers.items[i];
+      const who = n.guesses.filter(g => g.v === v).map(g => g.c ? "<i>The Crowd</i>" : esc(g.n));
+      document.getElementById("tap-" + i).innerHTML = `<b>Guessed ${nfmt(i, v)}:</b> ${who.join(", ")}`; return; }
     if (t.dataset.tab) tab(t.dataset.tab);
     if (t.dataset.sec) section(t.dataset.sec);
     if (t.dataset.jump) { tab("results"); section(t.dataset.jump); }
