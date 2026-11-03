@@ -249,6 +249,8 @@ footer{padding:18px 16px 30px;text-align:center;font-size:12px;color:var(--muted
 .pgrid .nm{position:sticky;left:0;background:#fff;text-align:left;z-index:1;box-shadow:1px 0 0 var(--rule);font-weight:600;cursor:pointer}
 .pgrid thead .nm{background:var(--paper);z-index:2}
 .pgrid .nm small{display:block;font-weight:400;color:var(--muted);font-size:10.5px}
+/* a long name breaks before its nickname so the frozen name column stays narrow */
+.pgrid tbody .nm{line-height:1.2}
 .pgrid tr.is-me .nm{color:var(--red)}
 .pgrid td.ok{background:#E4F0E2;color:#2E5E37;font-weight:600}.pgrid td.no{background:#F6E1DE;color:#8E2F28}
 .pgrid td.up{background:#F1F5E8}.pgrid td.dn{background:#FAF1E4}.pgrid td.pend{color:#8C8178}

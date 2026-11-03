@@ -236,7 +236,7 @@ function grid() {
   return `<div class="ghint">Swipe sideways for more races →</div><div class="gridwrap"><table class="pgrid">
     <thead><tr class="grp"><th class="nm"></th>${groups.map(g => `<th colspan="${g.n}" class="gs">${esc(g.sec)}</th>`).join("")}</tr>
     <tr><th class="nm">Player</th>${ALL.map(colHead).join("")}</tr></thead>
-    <tbody>${RK.map(e => `<tr class="${e.name === (me() || {}).name ? "is-me" : ""}${e.crowd ? " is-crowd" : ""}"><th class="nm" data-who="${esc(e.name)}">${esc(e.name)}<small>${e.crowd ? "Most popular picks" : rankText(e)} · ${e.points} pts</small></th>${ALL.map((r, i) => cell(r, e.picks[i], i)).join("")}</tr>`).join("")}</tbody>
+    <tbody>${RK.map(e => `<tr class="${e.name === (me() || {}).name ? "is-me" : ""}${e.crowd ? " is-crowd" : ""}"><th class="nm" data-who="${esc(e.name)}">${esc(e.name).replace(" (", "<br>(")}<small>${e.crowd ? "Most popular picks" : rankText(e)} · ${e.points} pts</small></th>${ALL.map((r, i) => cell(r, e.picks[i], i)).join("")}</tr>`).join("")}</tbody>
   </table></div>
   <div class="gkey"><span class="k ok">✓ right</span><span class="k no">✗ wrong</span><span class="k up">▲ ahead</span><span class="k dn">▼ behind</span><span class="k pend">not started</span> Tap a name to open their check.</div>`;
 }
