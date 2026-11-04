@@ -207,6 +207,22 @@ function standings() {
     <button class="sbs-link" data-grid="1">See everyone's picks side by side <span>›</span></button>`;
 }
 
+// Bonus questions and statehouses score as soon as they're decided, so they get real rows on the check.
+function extras(e) {
+  const x = e.extra || {}, row = (st, pk, res, cls, pts) => `<div class="rl ${cls}"><span class="st">${esc(st)}</span><span class="pk">${esc(pk || "—")}</span><span class="res">${res}</span><span class="pt">${pts}</span></div>`;
+  const SHORTQ = ["GA runoff", "House by 2 AM", "First flip", "Closest race"];
+  const bonus = (P.props.items || []).map((q, i) => { const pk = (x.props || [])[i];
+    if (q.answer) { const hit = norm(pk) === norm(q.answer); return row(SHORTQ[i] || q.q, pk, hit ? "✓ WON" : `✗ ${esc(q.answer)}`, hit ? "ok" : "no", hit ? "+1" : "0"); }
+    return row(SHORTQ[i] || q.q, pk, "· open", "pend", ""); }).join("");
+  const chs = P.legislatures.chambers || [];
+  const ch = chs.map((c, i) => { const won = c.d_won >= c.majority && c.majority > 0 ? "D" : c.r_won >= c.majority && c.majority > 0 ? "R" : null; const pk = (x.chambers || [])[i];
+    return won ? row(c.name, pk, pk === won ? "✓ WON" : `✗ ${won}`, pk === won ? "ok" : "no", pk === won ? "+1" : "0") : ""; }).join("");
+  const open = chs.filter(c => !(c.majority > 0 && (c.d_won >= c.majority || c.r_won >= c.majority))).length;
+  return `<div class="cat">Bonus round</div>${bonus}
+    <div class="cat">Statehouses</div>${ch}${open ? `<div class="rl pend"><span class="st" style="grid-column:1/4">${open} of ${chs.length} chambers still counting</span><span class="pt"></span></div>` : ""}
+    <div class="cat">Big numbers</div><div class="rl pend"><span class="st" style="grid-column:1/4">Scored once every race is decided</span><span class="pt"></span></div>`;
+}
+
 // ---- receipt ----
 function receipt(name) {
   const e = RK.find(x => x.name === name); let cur = "";
@@ -221,9 +237,9 @@ function receipt(name) {
   const won = ALL.filter((r, i) => r.winner && e.picks[i] === r.winner).length, lost = ALL.filter((r, i) => r.winner && e.picks[i] !== r.winner).length;
   return `<div class="receipt"><div class="rh">the 2026 Midterms Pool</div><div class="rc">${me() && me().name === name ? "Your check" : e.crowd ? "The pool's most popular pick in every race" : "Guest check"}</div><div class="rname">${esc(name)}</div>
     <div class="standing">${e.crowd ? "Not ranked" : `${rankText(e)} place`} · <b>${e.points} points</b></div>
-    <div class="rc">${won} right · ${lost} wrong · the rest still being decided</div>
+    <div class="rc">Races: ${won} right · ${lost} wrong · the rest still being decided</div>
     <div class="cols"><span>Race</span><span>Your pick</span><span>Result</span><span>Pts</span></div><div class="legend">✓ you got it · ✗ wrong, winner shown · ▲ ahead · ▼ behind · ·3 = underdog pick worth 3</div>${rows}
-    <div class="cat">Big numbers, statehouses &amp; bonus</div><div class="rl pend"><span class="st" style="grid-column:1/4">Scored once final</span><span class="pt"></span></div>
+    ${extras(e)}
     <div class="tot"><span>Total so far</span><span>${e.points}</span></div><div class="rc thanks">Thank you for dining with us.</div></div>`;
 }
 
