@@ -58,8 +58,8 @@ function race(r, opts = {}) {
   const upset = "";
   return `<div class="race hl ${called ? "is-called" : waiting ? "is-wait" : "is-count"}">
     ${kick ? `<div class="kick">${kick}</div>` : ""}<div class="head">${head}</div><div class="sub">${detail}</div>${upset}
-    ${bar(r)}<div class="poolrow"><span class="pool">Pool: ${r.cands.map(c => `<b>${c.picks}</b> picked ${esc(last(c.name))}`).join(" · ")}</span></div>
-    <div class="meta">${youLine(r, myPick(r)) || "<span></span>"}
+    ${bar(r)}<div class="poolrow"><span class="pool">${opts.watch ? "Not in the pool · just watching" : `Pool: ${r.cands.map(c => `<b>${c.picks}</b> picked ${esc(last(c.name))}`).join(" · ")}`}</span></div>
+    <div class="meta">${(!opts.watch && youLine(r, myPick(r))) || "<span></span>"}
     <a class="follow" href="${r.follow}" target="_blank" rel="noopener">Full results ↗</a></div></div>`;
 }
 const grouped = (list, fn) => {
@@ -171,7 +171,7 @@ function prop(p, i) {
 const SECTIONS = [
   { id: "senate", tab: "Senate", ...pick(P.sections[0]), html: () => grouped(P.sections[0].races, r => race(r)) },
   { id: "upset", tab: "Upset Watch", ...pick(P.sections[1]), rule: "Races the favorite should win. The underdog pays 3 pts if they win; the favorite pays 1.", html: () => grouped(P.sections[1].races, r => race(r)) },
-  { id: "governor", tab: "Governors", ...pick(P.sections[2]), html: () => grouped(P.sections[2].races, r => race(r)) },
+  { id: "governor", tab: "Governors", ...pick(P.sections[2]), html: () => grouped(P.sections[2].races, r => race(r)) + ((P.watch_gov || []).length ? `<div class="grp-l">Also watching · not scored <span>${P.watch_gov.length}</span></div>${P.watch_gov.map(r => race(r, { watch: true })).join("")}` : "") },
   { id: "numbers", tab: "Numbers", menu: P.numbers.menu, title: "The big numbers", rule: "Closest guess wins 3 pts · a tie for closest gets 3 pts each · scored once every race is decided", html: () => P.numbers.items.map(number).join("") },
   { id: "legislatures", tab: "Statehouses", menu: P.legislatures.menu, title: "Statehouses", rule: "Which party wins control of each state House and Senate · 1 pt each", html: () => P.legislatures.chambers.map(chamber).join("") },
   { id: "bonus", tab: "Bonus", menu: P.props.menu, title: "Bonus round", rule: P.props.rule, html: () => P.props.items.map(prop).join("") },
