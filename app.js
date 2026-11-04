@@ -5,7 +5,7 @@ let P = window.POOL;
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const last = n => n.replace(/\*|\s\((D|R|I)\)/g, "").trim().split(" ").slice(-1)[0];
 const clean = n => n.replace(/\*/g, "");
-const pty = n => (n.match(/\((D|R|I)\)/) || [])[1] || "";
+const pty = n => ((n || "").match(/\((D|R|I)\)/) || [])[1] || "";
 const pcls = n => "pc-" + (pty(n) || "N");
 const place = s => s.replace(" (special)", "");
 const SHORT = { "North Carolina": "N. Carolina", "South Carolina": "S. Carolina", "New Hampshire": "N. Hampshire", "Ohio (special)": "Ohio", "Florida (special)": "Florida", Mississippi: "Mississippi" };
