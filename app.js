@@ -27,7 +27,9 @@ const byName = (a, b) => (a.crowd - b.crowd) || a.name.localeCompare(b.name);  /
 const ME = new URLSearchParams(location.search).get("me");
 // Match loosely: names may carry stray spaces or different case in the sheet.
 const norm = s => String(s || "").trim().toLowerCase();
-const me = () => RK.find(e => norm(e.name) === norm(ME)) || null;
+// Renamed after links went out: old ?me= names still open the right card.
+const ALIAS = { "jessica giles": "jess like that" };
+const me = () => { const k = ALIAS[norm(ME)] || norm(ME); return RK.find(e => norm(e.name) === k) || null; };
 
 // ---- races: decided, or still counting ----
 const buildAll = () => [...P.sections.flatMap(s => s.races.map(r => ({ ...r, sec: s.title }))), ...P.corner.races.map(r => ({ ...r, sec: "Superintendents" }))];
