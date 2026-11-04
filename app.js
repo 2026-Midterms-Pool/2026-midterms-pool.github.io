@@ -70,7 +70,7 @@ const grouped = (list, fn) => {
 
 // ---- chambers: a race to the majority line ----
 function chamber(c, i) {
-  const won = c.majority > 0 && c.d_won >= c.majority ? "D" : c.majority > 0 && c.r_won >= c.majority ? "R" : null;
+  const won = c.called || (c.majority > 0 && c.d_won >= c.majority ? "D" : c.majority > 0 && c.r_won >= c.majority ? "R" : null);
   const party = p => p === "D" ? "Democrats" : "Republicans";
   const lead = c.d_won > c.r_won ? "D" : c.r_won > c.d_won ? "R" : null;
   const lane = (p, n) => `<div class="lane"><span class="ln-l pc-${p}">${p === "D" ? "Dem" : "Rep"}</span>
@@ -85,7 +85,7 @@ function chamber(c, i) {
   const before = c.now.startsWith("Tied") ? c.now : c.now.replace(/^([DR]) (\d+)–(\d+)$/, (_, p, a, b) => p === "D" ? `Democrats ${a}, Republicans ${b}` : `Republicans ${a}, Democrats ${b}`);
   return `<div class="race hl chamber ${won ? "is-called" : "is-count"}">
     <div class="kick">${esc(c.name)}</div><div class="head sm">${head}</div>
-    <div class="sub">First party to ${c.majority} seats wins control · ${c.uncalled} seats not decided yet${c.holdover ? `<br>${esc(c.holdover)}` : ""}</div>
+    <div class="sub">${c.called && c.called_by ? `${esc(c.called_by)} · ` : ""}First party to ${c.majority} seats wins control · ${c.uncalled} seats not decided yet${c.holdover ? `<br>${esc(c.holdover)}` : ""}</div>
     <div class="lanes">${lane("D", c.d_won)}${lane("R", c.r_won)}<span class="goal" title="${c.majority} seats for control">${c.majority}</span></div>
     <div class="fine">Before tonight: ${esc(before)}${c.total % 2 === 0 ? ` · ${c.total / 2}–${c.total / 2} tie: no point` : ""}</div>
     ${poolrow}<div class="meta">${you}<a class="follow" href="${c.follow}" target="_blank" rel="noopener">Full results ↗</a></div></div>`;
@@ -215,9 +215,9 @@ function extras(e) {
     if (q.answer) { const hit = norm(pk) === norm(q.answer); return row(SHORTQ[i] || q.q, pk, hit ? "✓ WON" : `✗ ${esc(q.answer)}`, hit ? "ok" : "no", hit ? "+1" : "0"); }
     return row(SHORTQ[i] || q.q, pk, "· open", "pend", ""); }).join("");
   const chs = P.legislatures.chambers || [];
-  const ch = chs.map((c, i) => { const won = c.d_won >= c.majority && c.majority > 0 ? "D" : c.r_won >= c.majority && c.majority > 0 ? "R" : null; const pk = (x.chambers || [])[i];
+  const ch = chs.map((c, i) => { const won = c.called || c.d_won >= c.majority && c.majority > 0 ? c.called || "D" : c.r_won >= c.majority && c.majority > 0 ? "R" : null; const pk = (x.chambers || [])[i];
     return won ? row(c.name, pk, pk === won ? "✓ WON" : `✗ ${won}`, pk === won ? "ok" : "no", pk === won ? "+1" : "0") : ""; }).join("");
-  const open = chs.filter(c => !(c.majority > 0 && (c.d_won >= c.majority || c.r_won >= c.majority))).length;
+  const open = chs.filter(c => !c.called && !(c.majority > 0 && (c.d_won >= c.majority || c.r_won >= c.majority))).length;
   return `<div class="cat">Bonus round</div>${bonus}
     <div class="cat">Statehouses</div>${ch}${open ? `<div class="rl pend"><span class="st" style="grid-column:1/4">${open} of ${chs.length} chambers still counting</span><span class="pt"></span></div>` : ""}
     <div class="cat">Big numbers</div>${(P.numbers.items || []).map((n, i) => { const v = (x.numbers || [])[i], SHORTN = ["House net", "Senate seats", "Dem governors"];
