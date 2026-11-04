@@ -220,7 +220,10 @@ function extras(e) {
   const open = chs.filter(c => !(c.majority > 0 && (c.d_won >= c.majority || c.r_won >= c.majority))).length;
   return `<div class="cat">Bonus round</div>${bonus}
     <div class="cat">Statehouses</div>${ch}${open ? `<div class="rl pend"><span class="st" style="grid-column:1/4">${open} of ${chs.length} chambers still counting</span><span class="pt"></span></div>` : ""}
-    <div class="cat">Big numbers</div><div class="rl pend"><span class="st" style="grid-column:1/4">Scored once every race is decided</span><span class="pt"></span></div>`;
+    <div class="cat">Big numbers</div>${(P.numbers.items || []).map((n, i) => { const v = (x.numbers || [])[i], SHORTN = ["House net", "Senate seats", "Dem governors"];
+      if (n.status !== "final") return row(SHORTN[i], v, "· open", "pend", "");
+      const d = y => Math.abs(parseFloat(y) - n.now_n), best = Math.min(...RK.filter(r => !r.crowd).map(r => d((r.extra.numbers || [])[i])).filter(z => !Number.isNaN(z)));
+      const hit = !Number.isNaN(d(v)) && d(v) <= best; return row(SHORTN[i], v, hit ? "✓ CLOSEST" : "✗ not closest", hit ? "ok" : "no", hit ? "+3" : "0"); }).join("")}`;
 }
 
 // ---- receipt ----
