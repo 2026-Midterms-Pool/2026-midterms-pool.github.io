@@ -34,7 +34,7 @@ const me = () => { const k = ALIAS[norm(ME)] || norm(ME); return RK.find(e => no
 // ---- races: decided, or still counting ----
 const buildAll = () => [...P.sections.flatMap(s => s.races.map(r => ({ ...r, sec: s.title }))), ...P.corner.races.map(r => ({ ...r, sec: "Superintendents" }))];
 let ALL = buildAll();
-const myPick = r => { const m = me(); if (!m) return null; const i = ALL.findIndex(x => x.state === r.state && x.office === r.office); return i < 0 ? null : m.picks[i]; };
+const myPick = r => { const m = me(); if (!m) return null; const i = ALL.findIndex(x => x.state === r.state && x.cands[0].name === r.cands[0].name);  // state alone collides: Senate and governor races share states return i < 0 ? null : m.picks[i]; };
 const ORDER = { called: 0, counting: 1, waiting: 2 };
 
 function bar(r) {
